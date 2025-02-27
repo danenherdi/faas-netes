@@ -8,6 +8,7 @@ package k8s
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net/url"
 	"strings"
@@ -57,6 +58,7 @@ func getNamespace(name, defaultNamespace string) string {
 }
 
 func (l *FunctionLookup) Resolve(name string) (url.URL, error) {
+	log.Printf("Resolving: %s\n", name)
 	functionName := name
 	namespace := getNamespace(name, l.DefaultNamespace)
 	if err := l.verifyNamespace(namespace); err != nil {

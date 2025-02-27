@@ -6,7 +6,7 @@ package k8s
 import (
 	"path/filepath"
 
-	types "github.com/openfaas/faas-provider/types"
+	types "github.com/danenherdi/faas-provider/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
