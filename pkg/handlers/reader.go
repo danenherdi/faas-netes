@@ -12,7 +12,7 @@ import (
 	"log"
 	"net/http"
 
-	types "github.com/openfaas/faas-provider/types"
+	types "github.com/danenherdi/faas-provider/types"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	v1 "k8s.io/client-go/listers/apps/v1"
@@ -92,4 +92,11 @@ func getServiceList(functionNamespace string, deploymentLister v1.DeploymentList
 	}
 
 	return functions, nil
+}
+
+// MakeFlowReader handler for reading workflows deployed in the cluster as deployments.
+func MakeFlowReader(defaultNamespace string, deploymentLister v1.DeploymentLister) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+	}
 }

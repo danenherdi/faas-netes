@@ -14,6 +14,10 @@ import (
 	"net/http"
 	"time"
 
+	faasProvider "github.com/danenherdi/faas-provider"
+	"github.com/danenherdi/faas-provider/logs"
+	"github.com/danenherdi/faas-provider/proxy"
+	providertypes "github.com/danenherdi/faas-provider/types"
 	clientset "github.com/openfaas/faas-netes/pkg/client/clientset/versioned"
 	informers "github.com/openfaas/faas-netes/pkg/client/informers/externalversions"
 	v1 "github.com/openfaas/faas-netes/pkg/client/informers/externalversions/openfaas/v1"
@@ -22,11 +26,6 @@ import (
 	"github.com/openfaas/faas-netes/pkg/k8s"
 	"github.com/openfaas/faas-netes/pkg/signals"
 	version "github.com/openfaas/faas-netes/version"
-	faasProvider "github.com/openfaas/faas-provider"
-	"github.com/openfaas/faas-provider/logs"
-	"github.com/openfaas/faas-provider/proxy"
-	providertypes "github.com/openfaas/faas-provider/types"
-
 	kubeinformers "k8s.io/client-go/informers"
 	v1apps "k8s.io/client-go/informers/apps/v1"
 	v1core "k8s.io/client-go/informers/core/v1"
@@ -212,9 +211,11 @@ func runController(setup serverSetup) {
 
 	bootstrapHandlers := providertypes.FaaSHandlers{
 		FunctionProxy:  proxyHandler,
+		FlowProxy:      proxyHandler,
 		DeleteFunction: handlers.MakeDeleteHandler(config.DefaultFunctionNamespace, kubeClient),
 		DeployFunction: handlers.MakeDeployHandler(config.DefaultFunctionNamespace, factory, functionList),
 		FunctionLister: handlers.MakeFunctionReader(config.DefaultFunctionNamespace, deployLister),
+		FlowReader:     handlers.MakeFlowReader(config.DefaultFunctionNamespace, nil),
 		FunctionStatus: handlers.MakeReplicaReader(config.DefaultFunctionNamespace, deployLister),
 		ScaleFunction:  handlers.MakeReplicaUpdater(config.DefaultFunctionNamespace, kubeClient),
 		UpdateFunction: handlers.MakeUpdateHandler(config.DefaultFunctionNamespace, factory),
