@@ -8,10 +8,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/redis/go-redis/v9"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	faasProvider "github.com/danenherdi/faas-provider"
@@ -45,6 +48,7 @@ const defaultResync = time.Hour * 10
 func main() {
 	var kubeconfig string
 	var masterURL string
+	var flowConfigFile string
 	var (
 		verbose bool
 	)
@@ -55,7 +59,8 @@ func main() {
 	flag.StringVar(&masterURL, "master", "",
 		"The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.Bool("operator", false, "Run as an operator (not available in CE)")
-
+	flag.StringVar(&flowConfigFile, "flowconfig", "/etc/open-faas/flows/config.json",
+		"Path to a flow config file")
 	flag.Parse()
 
 	sha, release := version.GetReleaseInfo()
@@ -131,13 +136,35 @@ Version: %s Commit: %s
 
 	factory := k8s.NewFunctionFactory(kubeClient, deployConfig, faasClient.OpenfaasV1())
 
+	// Create Redis client
+	isCachingEnabled := os.Getenv("IS_CACHING_ENABLE")
+	if isCachingEnabled == "" {
+		isCachingEnabled = "false"
+	}
+	config.FaaSConfig.EnableCaching = isCachingEnabled == "true"
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+		DB:   0,
+	})
+
+	// Flows config
+	var flows providertypes.Flows
+	// Read the flow configuration file
+	flowsData, err := os.ReadFile(flowConfigFile)
+	if err != nil {
+		log.Fatalf("Error creating flow configuration: %s", err.Error())
+	}
+	_ = json.Unmarshal([]byte(flowsData), &flows)
+
 	setup := serverSetup{
 		config:              config,
+		flows:               flows,
 		functionFactory:     factory,
 		kubeInformerFactory: kubeInformerFactory,
 		faasInformerFactory: faasInformerFactory,
 		kubeClient:          kubeClient,
 		faasClient:          faasClient,
+		redisClient:         redisClient,
 	}
 
 	runController(setup)
@@ -211,7 +238,8 @@ func runController(setup serverSetup) {
 
 	bootstrapHandlers := providertypes.FaaSHandlers{
 		FunctionProxy:  proxyHandler,
-		FlowProxy:      proxyHandler,
+		Flows:          handlers.MakeFlowsHandler(setup.flows),
+		FlowProxy:      proxy.NewFlowHandler(config.FaaSConfig, setup.redisClient, functionLookup, setup.flows, printFunctionExecutionTime),
 		DeleteFunction: handlers.MakeDeleteHandler(config.DefaultFunctionNamespace, kubeClient),
 		DeployFunction: handlers.MakeDeployHandler(config.DefaultFunctionNamespace, factory, functionList),
 		FunctionLister: handlers.MakeFunctionReader(config.DefaultFunctionNamespace, deployLister),
@@ -235,8 +263,10 @@ func runController(setup serverSetup) {
 // faas-netes controller or operator
 type serverSetup struct {
 	config              config.BootstrapConfig
+	flows               providertypes.Flows
 	kubeClient          *kubernetes.Clientset
 	faasClient          *clientset.Clientset
+	redisClient         *redis.Client
 	functionFactory     k8s.FunctionFactory
 	kubeInformerFactory kubeinformers.SharedInformerFactory
 	faasInformerFactory informers.SharedInformerFactory
