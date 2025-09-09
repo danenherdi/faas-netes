@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	paperClient "github.com/PaperCache/paper-client-go"
 	"github.com/redis/go-redis/v9"
 	"log"
 	"net/http"
@@ -147,6 +148,12 @@ Version: %s Commit: %s
 		DB:   0,
 	})
 
+	// Initialize Paper client if caching is enabled
+	paperCacheClient, err := paperClient.ClientConnect("localhost:3145")
+	if err != nil {
+		log.Fatalf("Error connecting to PaperCache: %s", err.Error())
+	}
+
 	// Flows config
 	var flows providertypes.Flows
 	// Read the flow configuration file
@@ -165,6 +172,7 @@ Version: %s Commit: %s
 		kubeClient:          kubeClient,
 		faasClient:          faasClient,
 		redisClient:         redisClient,
+		paperCacheClient:    paperCacheClient,
 	}
 
 	runController(setup)
@@ -267,6 +275,7 @@ type serverSetup struct {
 	kubeClient          *kubernetes.Clientset
 	faasClient          *clientset.Clientset
 	redisClient         *redis.Client
+	paperCacheClient    *paperClient.PaperClient
 	functionFactory     k8s.FunctionFactory
 	kubeInformerFactory kubeinformers.SharedInformerFactory
 	faasInformerFactory informers.SharedInformerFactory

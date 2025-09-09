@@ -14,8 +14,10 @@ require (
 )
 
 require (
+	github.com/PaperCache/paper-client-go v1.0.5
 	github.com/danenherdi/faas-provider v0.1.1-alpha
 	github.com/google/go-containerregistry v0.20.2
+	github.com/redis/go-redis/v9 v9.7.1
 	k8s.io/code-generator v0.31.3
 )
 
@@ -54,7 +56,6 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
-	github.com/redis/go-redis/v9 v9.7.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/vbatts/tar-split v0.11.6 // indirect
