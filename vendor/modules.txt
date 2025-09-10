@@ -11,7 +11,7 @@ github.com/cespare/xxhash/v2
 ## explicit; go 1.22.0
 github.com/containerd/stargz-snapshotter/estargz
 github.com/containerd/stargz-snapshotter/estargz/errorutil
-# github.com/danenherdi/faas-provider v0.1.1-alpha
+# github.com/danenherdi/faas-provider v0.2.1-alpha
 ## explicit; go 1.23
 github.com/danenherdi/faas-provider
 github.com/danenherdi/faas-provider/auth

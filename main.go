@@ -137,21 +137,32 @@ Version: %s Commit: %s
 
 	factory := k8s.NewFunctionFactory(kubeClient, deployConfig, faasClient.OpenfaasV1())
 
-	// Create Redis client
+	// Create Cache client
 	isCachingEnabled := os.Getenv("IS_CACHING_ENABLE")
 	if isCachingEnabled == "" {
 		isCachingEnabled = "false"
 	}
 	config.FaaSConfig.EnableCaching = isCachingEnabled == "true"
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
-		DB:   0,
-	})
 
-	// Initialize Paper client if caching is enabled
-	paperCacheClient, err := paperClient.ClientConnect("localhost:3145")
-	if err != nil {
-		log.Fatalf("Error connecting to PaperCache: %s", err.Error())
+	// Get caching method
+	var cacheClient providertypes.CacheClient
+	cachingMethod := os.Getenv("CACHING_METHOD")
+
+	// Case for papercache caching method
+	if cachingMethod == "papercache" {
+		client, err := paperClient.ClientConnect("localhost:3145")
+		if err != nil {
+			log.Fatalf("Error connecting to PaperCache: %s", err.Error())
+		}
+		cacheClient = &providertypes.PaperCacheClientWrapper{Client: client}
+		log.Println("Using PaperCache for caching.")
+	} else {
+		client := redis.NewClient(&redis.Options{
+			Addr: "localhost:6379",
+			DB:   0,
+		})
+		cacheClient = &providertypes.RedisClientWrapper{Client: client}
+		log.Println("Using Redis for caching.")
 	}
 
 	// Flows config
@@ -171,8 +182,7 @@ Version: %s Commit: %s
 		faasInformerFactory: faasInformerFactory,
 		kubeClient:          kubeClient,
 		faasClient:          faasClient,
-		redisClient:         redisClient,
-		paperCacheClient:    paperCacheClient,
+		cacheClient:         cacheClient,
 	}
 
 	runController(setup)
@@ -247,7 +257,7 @@ func runController(setup serverSetup) {
 	bootstrapHandlers := providertypes.FaaSHandlers{
 		FunctionProxy:  proxyHandler,
 		Flows:          handlers.MakeFlowsHandler(setup.flows),
-		FlowProxy:      proxy.NewFlowHandler(config.FaaSConfig, setup.redisClient, functionLookup, setup.flows, printFunctionExecutionTime),
+		FlowProxy:      proxy.NewFlowHandler(config.FaaSConfig, setup.cacheClient, functionLookup, setup.flows, printFunctionExecutionTime),
 		DeleteFunction: handlers.MakeDeleteHandler(config.DefaultFunctionNamespace, kubeClient),
 		DeployFunction: handlers.MakeDeployHandler(config.DefaultFunctionNamespace, factory, functionList),
 		FunctionLister: handlers.MakeFunctionReader(config.DefaultFunctionNamespace, deployLister),
@@ -274,8 +284,7 @@ type serverSetup struct {
 	flows               providertypes.Flows
 	kubeClient          *kubernetes.Clientset
 	faasClient          *clientset.Clientset
-	redisClient         *redis.Client
-	paperCacheClient    *paperClient.PaperClient
+	cacheClient         providertypes.CacheClient
 	functionFactory     k8s.FunctionFactory
 	kubeInformerFactory kubeinformers.SharedInformerFactory
 	faasInformerFactory informers.SharedInformerFactory
