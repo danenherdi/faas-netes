@@ -150,12 +150,19 @@ Version: %s Commit: %s
 
 	// Case for papercache caching method
 	if cachingMethod == "papercache" {
-		client, err := paperClient.ClientConnect("localhost:3145")
+		paperHost := os.Getenv("PAPERCACHE_HOST")
+		if paperHost == "" {
+			paperHost = "papercache.openfaas.svc.cluster.local:3145"
+		}
+
+		log.Printf("Attempting to connect to PaperCache at: %s", paperHost)
+
+		client, err := paperClient.ClientConnect(paperHost)
 		if err != nil {
 			log.Fatalf("Error connecting to PaperCache: %s", err.Error())
 		}
 		cacheClient = &providertypes.PaperCacheClientWrapper{Client: client}
-		log.Println("Using PaperCache for caching.")
+		log.Printf("Using PaperCache for caching. Host: %s", paperHost)
 	} else {
 		client := redis.NewClient(&redis.Options{
 			Addr: "localhost:6379",
