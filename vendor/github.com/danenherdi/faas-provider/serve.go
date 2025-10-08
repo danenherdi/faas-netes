@@ -42,7 +42,7 @@ func Serve(ctx context.Context, handlers *types.FaaSHandlers, config *types.FaaS
 
 		credentials, err := reader.Read()
 		if err != nil {
-			log.Fatalf("failed to read basic auth credentials: %s", err)
+			log.Fatal(err)
 		}
 
 		handlers.FunctionLister = auth.DecorateWithBasicAuth(handlers.FunctionLister, credentials)
