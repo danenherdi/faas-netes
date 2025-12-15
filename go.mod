@@ -14,8 +14,8 @@ require (
 )
 
 require (
-	github.com/PaperCache/paper-client-go v1.0.5
-	github.com/danenherdi/faas-provider v0.2.2-alpha
+	github.com/danenherdi/faas-provider v1.0.0-beta
+	github.com/danenherdi/paper-client-go v0.0.2-alpha
 	github.com/google/go-containerregistry v0.20.2
 	github.com/redis/go-redis/v9 v9.7.1
 	k8s.io/code-generator v0.31.3

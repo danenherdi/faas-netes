@@ -11,12 +11,14 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	paperClient "github.com/PaperCache/paper-client-go"
-	"github.com/redis/go-redis/v9"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
+
+	paperClient "github.com/danenherdi/paper-client-go"
+	"github.com/redis/go-redis/v9"
 
 	faasProvider "github.com/danenherdi/faas-provider"
 	"github.com/danenherdi/faas-provider/logs"
@@ -154,8 +156,78 @@ Version: %s Commit: %s
 		if paperHost == "" {
 			paperHost = "papercache.openfaas.svc.cluster.local:3145"
 		}
-
 		log.Printf("Attempting to connect to PaperCache at: %s", paperHost)
+
+		// Orchestrator settings
+		enableIntelligentOrchestrator := os.Getenv("ENABLE_INTELLIGENT_ORCHESTRATOR")
+		if enableIntelligentOrchestrator == "true" {
+			config.FaaSConfig.EnableIntelligentOrchestrator = true
+		} else {
+			config.FaaSConfig.EnableIntelligentOrchestrator = false // Default: false
+		}
+
+		orchestratorEvalInterval := os.Getenv("ORCHESTRATOR_EVAL_INTERVAL")
+		if orchestratorEvalInterval != "" {
+			if val, err := strconv.ParseUint(orchestratorEvalInterval, 10, 64); err == nil {
+				config.FaaSConfig.OrchestratorEvalInterval = val
+			} else {
+				log.Printf("Invalid ORCHESTRATOR_EVAL_INTERVAL: %s, using default (10)", orchestratorEvalInterval)
+				config.FaaSConfig.OrchestratorEvalInterval = 10
+			}
+		} else {
+			config.FaaSConfig.OrchestratorEvalInterval = 10 // Default: 10 seconds
+		}
+
+		orchestratorStabilityPeriod := os.Getenv("ORCHESTRATOR_STABILITY_PERIOD")
+		if orchestratorStabilityPeriod != "" {
+			if val, err := strconv.ParseUint(orchestratorStabilityPeriod, 10, 64); err == nil {
+				config.FaaSConfig.OrchestratorStabilityPeriod = val
+			} else {
+				log.Printf("Invalid ORCHESTRATOR_STABILITY_PERIOD: %s, using default (30)", orchestratorStabilityPeriod)
+				config.FaaSConfig.OrchestratorStabilityPeriod = 30
+			}
+		} else {
+			config.FaaSConfig.OrchestratorStabilityPeriod = 30 // Default: 30 seconds
+		}
+
+		orchestratorSwitchThreshold := os.Getenv("ORCHESTRATOR_SWITCH_THRESHOLD")
+		if orchestratorSwitchThreshold != "" {
+			if val, err := strconv.ParseFloat(orchestratorSwitchThreshold, 64); err == nil {
+				if val > 0 && val <= 1.0 {
+					config.FaaSConfig.OrchestratorSwitchThreshold = val
+				} else {
+					log.Printf("Invalid ORCHESTRATOR_SWITCH_THRESHOLD: %s (must be 0-1), using default (0.05)", orchestratorSwitchThreshold)
+					config.FaaSConfig.OrchestratorSwitchThreshold = 0.05
+				}
+			} else {
+				log.Printf("Invalid ORCHESTRATOR_SWITCH_THRESHOLD: %s, using default (0.05)", orchestratorSwitchThreshold)
+				config.FaaSConfig.OrchestratorSwitchThreshold = 0.05
+			}
+		} else {
+			config.FaaSConfig.OrchestratorSwitchThreshold = 0.05 // Default: 5%
+		}
+
+		orchestratorMaxMemory := os.Getenv("ORCHESTRATOR_MAX_MEMORY")
+		if orchestratorMaxMemory != "" {
+			if val, err := strconv.ParseUint(orchestratorMaxMemory, 10, 64); err == nil {
+				config.FaaSConfig.OrchestratorMaxMemory = val
+			} else {
+				log.Printf("Invalid ORCHESTRATOR_MAX_MEMORY: %s, using default (8)", orchestratorMaxMemory)
+				config.FaaSConfig.OrchestratorMaxMemory = 8
+			}
+		} else {
+			config.FaaSConfig.OrchestratorMaxMemory = 8 // Default: 8 GB
+		}
+
+		// Log configuration
+		if config.FaaSConfig.EnableIntelligentOrchestrator {
+			log.Println("Intelligent Orchestrator Configuration:")
+			log.Printf("Enabled: %v", config.FaaSConfig.EnableIntelligentOrchestrator)
+			log.Printf("Evaluation Interval: %d seconds", config.FaaSConfig.OrchestratorEvalInterval)
+			log.Printf("Stability Period: %d seconds", config.FaaSConfig.OrchestratorStabilityPeriod)
+			log.Printf("Switch Threshold: %.2f%%", config.FaaSConfig.OrchestratorSwitchThreshold*100)
+			log.Printf("Max Memory: %d GB", config.FaaSConfig.OrchestratorMaxMemory)
+		}
 
 		client, err := paperClient.ClientConnect(paperHost)
 		if err != nil {
